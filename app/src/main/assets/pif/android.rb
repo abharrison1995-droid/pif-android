@@ -7,8 +7,12 @@
 module PIFAndroid
   PATCHES = {}
 
+  # stderr goes nowhere on Android, so log to <game folder>/pif-android.log
+  LOG_FILE = "pif-android.log"
+  File.write(LOG_FILE, "") rescue nil
+
   def self.log(msg)
-    $stderr.puts("[pif-android] #{msg}")
+    File.open(LOG_FILE, "a") { |f| f.puts("#{Time.now.strftime('%H:%M:%S')} #{msg}") }
   rescue StandardError
   end
 
@@ -43,6 +47,8 @@ end
 module PIFAndroid
   CACHE_DIR = ".pif-cache/scripts"
   CACHE_FORMAT = 1
+  @cache_hits = 0
+  @cache_misses = 0
 
   def self.script_cache_enabled?
     !File.exist?("pif-nocache")
@@ -58,13 +64,16 @@ module PIFAndroid
       header, binary = data.split("\n", 2)
       if header == stamp && binary
         begin
-          return RubyVM::InstructionSequence.load_from_binary(binary)
+          iseq = RubyVM::InstructionSequence.load_from_binary(binary)
+          @cache_hits += 1
+          return iseq
         rescue StandardError => e
           log("discarding bad cache for #{file_path}: #{e.message}")
         end
       end
     end
 
+    @cache_misses += 1
     code = File.open(file_path, "r") { |file| file.read }
     iseq = RubyVM::InstructionSequence.compile(code, name, name)
     begin
@@ -75,6 +84,13 @@ module PIFAndroid
       log("could not write cache for #{file_path}: #{e.message}")
     end
     iseq
+  end
+
+  def self.load_all_scripts(path)
+    started = Process.clock_gettime(Process::CLOCK_MONOTONIC)
+    load_scripts_from_folder(path)
+    elapsed = Process.clock_gettime(Process::CLOCK_MONOTONIC) - started
+    log(format("scripts loaded in %.2fs (%d cached, %d compiled)", elapsed, @cache_hits, @cache_misses))
   end
 
   # Same traversal order and error handling as the game's own loader
@@ -109,7 +125,7 @@ class Object
     return unless self == Object && name == :load_scripts_from_folder
     return if @pif_replacing_loader || !PIFAndroid.script_cache_enabled?
     @pif_replacing_loader = true
-    define_method(:load_scripts_from_folder) { |path| PIFAndroid.load_scripts_from_folder(path) }
+    define_method(:load_scripts_from_folder) { |path| PIFAndroid.load_all_scripts(path) }
     private :load_scripts_from_folder
     @pif_replacing_loader = false
   end
@@ -127,4 +143,5 @@ PIFAndroid.after_class(:PokemonSystem) do |klass|
   end)
 end
 
+PIFAndroid.log("android.rb loaded, ruby #{RUBY_VERSION}, script cache #{PIFAndroid.script_cache_enabled? ? 'on' : 'off'}")
 PIFAndroid.start
