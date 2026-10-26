@@ -80,6 +80,10 @@ jobs:
           bash get_deps.sh
           make all
 
+      - name: Generate embedded engine assets
+        working-directory: app/jni/mkxp-z
+        run: bash make_xxd.sh > /dev/null
+
       - name: Build APK
         env:
           PIF_KEYSTORE_B64: ${{ secrets.PIF_KEYSTORE_B64 }}

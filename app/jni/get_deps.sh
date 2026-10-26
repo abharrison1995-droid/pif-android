@@ -45,7 +45,7 @@ fi
 # Freedesktop Pixman
 if [[ ! -d "pixman" ]]; then
   echo "Downloading Pixman..."
-  git clone $GIT_ARGS -b pixman-0.42.2 https://gitlab.freedesktop.org/pixman/pixman.git pixman
+  git clone $GIT_ARGS -b pixman-0.43.4 https://gitlab.freedesktop.org/pixman/pixman.git pixman
 fi
 
 # PhysicsFS

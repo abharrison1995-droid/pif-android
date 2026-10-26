@@ -10,8 +10,7 @@ LOCAL_CFLAGS := \
 	-DPIXMAN_NO_TLS \
 	-D_USE_MATH_DEFINES \
 	-Wno-unknown-attributes \
-	-Wno-expansion-to-defined \
-	-fno-integrated-as
+	-Wno-expansion-to-defined
 
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PRECONFIG_PATH)/pixman \
@@ -56,7 +55,8 @@ LOCAL_SRC_FILES := \
 	$(LOCAL_PATH)/pixman/pixman-utils.c
 
 ifeq ($(TARGET_ARCH_ABI), armeabi-v7a)
-	LOCAL_CFLAGS += -DUSE_ARM_NEON -DUSE_ARM_SIMD
+	# 32-bit ARM asm needs GNU as (not shipped since NDK r24)
+	LOCAL_CFLAGS += -DUSE_ARM_NEON -DUSE_ARM_SIMD -fno-integrated-as
 	LOCAL_SRC_FILES += \
 		$(LOCAL_PATH)/pixman/pixman-arm-simd.c \
 		$(LOCAL_PATH)/pixman/pixman-arm-simd-asm.S \
