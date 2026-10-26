@@ -5,19 +5,41 @@ plugins {
 android {
     namespace 'com.hatkid.mkxpz'
     compileSdk 33
+    ndkVersion "25.2.9519653"
 
     defaultConfig {
-        applicationId "com.hatkid.mkxpz"
-        minSdk 21
+        applicationId "com.abharrison.pif"
+        minSdk 26
         targetSdk 33
-        versionCode 11
-        versionName "0.1.1"
-        archivesBaseName = "mkxp-z-$versionName"
+        // CI passes the run number so every release installs as an update
+        versionCode = (System.getenv("PIF_VERSION_CODE") ?: "1").toInteger()
+        versionName = System.getenv("PIF_VERSION_NAME") ?: "0.1.0-dev"
+        archivesBaseName = "InfiniteFusion-$versionName"
+        ndk { abiFilters "arm64-v8a" }
         ndk.debugSymbolLevel = 'FULL'
+    }
+
+    // Release key lives outside the repo (~/.pif-android-keys locally, secrets on CI).
+    // Android only installs updates signed with the same key, so never regenerate it.
+    def keyDir = "${System.getProperty('user.home')}/.pif-android-keys"
+    def keystorePath = System.getenv("PIF_KEYSTORE") ?: "$keyDir/release.jks"
+    def keystorePass = System.getenv("PIF_KEYSTORE_PASS") ?:
+        (file("$keyDir/release.pass").exists() ? file("$keyDir/release.pass").text.trim() : null)
+
+    signingConfigs {
+        release {
+            if (keystorePass != null && file(keystorePath).exists()) {
+                storeFile file(keystorePath)
+                storePassword keystorePass
+                keyAlias "pif"
+                keyPassword keystorePass
+            }
+        }
     }
 
     buildTypes {
         release {
+            signingConfig = signingConfigs.release.storeFile != null ? signingConfigs.release : null
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }
@@ -28,15 +50,6 @@ android {
         }
     }
 
-    splits {
-        abi {
-            enable true
-            reset()
-            // You can build also 'x86' and 'x86_64' if you want (useful for AVD debugging)
-            include 'armeabi-v7a', 'arm64-v8a'
-            universalApk true
-        }
-    }
 
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
@@ -48,8 +61,4 @@ android {
             path "jni/Android.mk"
         }
     }
-}
-
-dependencies {
-    implementation 'com.intuit.sdp:sdp-android:1.1.0'
 }

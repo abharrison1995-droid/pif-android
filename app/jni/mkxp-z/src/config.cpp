@@ -10,6 +10,7 @@
 #include <assert.h>
 
 #include <stdint.h>
+#include <sys/stat.h>
 #include <vector>
 
 #include "filesystem/filesystem.h"
@@ -288,6 +289,10 @@ try { exp } catch (...) {}
     SET_OPT(useScriptNames, boolean);
     
     fillStringVec(opts["preloadScript"], preloadScripts);
+#ifdef MKXPZ_BUILD_ANDROID
+    // Android compatibility layer bundled in the APK (app/src/main/assets/pif/)
+    preloadScripts.insert(preloadScripts.begin(), "pif/android.rb");
+#endif
     fillStringVec(opts["RTP"], rtps);
     fillStringVec(opts["fontSub"], fontSubs);
     fillStringVec(opts["rubyLoadpath"], rubyLoadpaths);
@@ -388,8 +393,15 @@ void Config::readGameINI() {
     if (dataPathApp.empty())
         dataPathApp = game.title;
     
+#ifdef MKXPZ_BUILD_ANDROID
+    // Keep saves next to the game files instead of the app's private storage,
+    // so they survive reinstalls and can be backed up over USB
+    customDataPath = mkxp_fs::getCurrentDirectory() + "/Saves/";
+    mkdir(customDataPath.c_str(), 0775);
+#else
     customDataPath = prefPath(dataPathOrg.c_str(), dataPathApp.c_str());
-    
+#endif
+
     if (rgssVersion == 0) {
         /* Try to guess RGSS version based on Data/Scripts extension */
         rgssVersion = 1;

@@ -52,7 +52,7 @@
         <!-- Main activity -->
         <activity
             android:name=".MainActivity"
-            android:label="mkxp-z"
+            android:label="Infinite Fusion"
             android:launchMode="singleTop"
             android:alwaysRetainTaskState="true"
             android:screenOrientation="sensorLandscape"
@@ -83,7 +83,7 @@
         <!-- You can remove or disable this if not needed -->
         <activity-alias
             android:name="MainDebugActivity"
-            android:label="mkxp-z (Debug)"
+            android:label="Infinite Fusion (Debug)"
             android:targetActivity=".MainActivity"
             android:exported="true"
         >

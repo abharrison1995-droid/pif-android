@@ -1,28 +1,72 @@
-# mkxp-z for Android
+# Infinite Fusion for Android (personal build)
 
-This is port of [mkxp-z](https://github.com/mkxp-z/mkxp-z) to Android.
+A native Android build of the [mkxp-z](https://github.com/mkxp-z/mkxp-z) engine that
+Pokémon Infinite Fusion runs on, set up for handhelds with built-in controls
+(tested target: Mangmi Air X). Based on
+[thehatkid/mkxp-z-android](https://github.com/thehatkid/mkxp-z-android).
 
-Currently, it's *almost* works properly (likely, *experemental*),
-but enough to have running RPG Maker XP, VX and VX Ace games.
+Personal use only. The APK contains only the engine; game files are copied to the
+device separately and are never committed or published here.
 
-## Running mkxp-z on Android
+## What's different from the upstream port
 
-0. ~~Build mkxp-z application~~ (TODO: make tutorial or public release)
-1. Install APK on your Android device
-2. Create `mkxp-z` folder on internal storage (e.g. `/storage/emulated/0/mkxp-z`)
-3. You can put custom mkxp-z config ([mkxp.json](app/jni/mkxp-z/mkxp.json)) in `mkxp-z` folder
-   (e.g. preload scripts or change game directory to load game from external storage)
-4. Copy game files into folder `mkxp-z`
-   (or to other game folder that defined in your `mkxp.json`)
-5. Run mkxp-z, grant access to storage, and have fun, I think?
+- **No on-screen joypad.** Physical buttons, D-pad (button or hat type) and the left
+  stick are mapped directly (`ControllerMapper.java`).
+- **Optimised build.** Engine, Ruby and libraries are compiled at `-O2` for 64-bit ARM
+  (upstream builds at `-O0` / debug).
+- **Saves next to the game** in `InfiniteFusion/Saves/`, so they survive reinstalls.
+- **Android compatibility script** bundled in the APK (`app/src/main/assets/pif/android.rb`),
+  applied without editing any game files.
 
-## Known issues
+## Device setup
 
-- You can't write saves/files in external storage (such as SD Card) on lower than Android 10
-  (On Android 11+ granting All Files Access means You can write on external storages)
+1. Install the APK from this repo's Releases (or via Obtainium, see below).
+2. Copy the game folder (the one containing `Game.ini`, `Data/`, `Graphics/`, `Audio/`)
+   to the device's internal storage as `InfiniteFusion/`, i.e.
+   `/storage/emulated/0/InfiniteFusion/Game.ini`.
+3. Launch **Infinite Fusion** and grant "All files access" when asked.
 
-## To Do...
+## Controls
 
-- mkxp-z Android compilation tutorial on GitHub Wiki page
-- Fix compile Ruby extensions in Windows MSYS2 environment
-- *...and much more, I think?*
+| Button | Game action |
+|---|---|
+| A (bottom) | Confirm / interact |
+| B (right) | Back / open menu |
+| X (left) | Run (hold), sort, Mega |
+| Y (top) | Registered item / shift |
+| L1 / R1 | Page up / page down |
+| Start | Pause menu |
+| D-pad / left stick | Move |
+
+To change these, put a `controller.json` in the `InfiniteFusion/` folder:
+
+```json
+{
+  "swapConfirmCancel": false,
+  "stickDeadzone": 0.5,
+  "buttons": { "BUTTON_R2": "F", "BUTTON_SELECT": "NONE" }
+}
+```
+
+Button names are Android `KEYCODE_*` names without the prefix.
+
+## Updates via Obtainium
+
+Add this repo in [Obtainium](https://github.com/ImranR98/Obtainium) with a GitHub
+personal access token (needed because the repo is private). New tags (`v*`) build and
+publish a signed APK automatically.
+
+## Building locally
+
+Requirements: JDK 17, Android SDK with NDK 25.2.9519653 and CMake 3.22.1, a host
+Ruby 3.1.0 on `PATH`, autoconf/automake/bison.
+
+```bash
+cd app/jni
+bash get_deps.sh
+ANDROID_NDK_HOME=$HOME/Android/Sdk/ndk/25.2.9519653 ARCH=linux-x86_64 make all
+cd ../..
+./gradlew assembleRelease
+```
+
+The release keystore is read from `~/.pif-android-keys/` locally and from repo secrets on CI.

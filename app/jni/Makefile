@@ -6,7 +6,7 @@ NPROC     := $(shell nproc)
 # (Default: 21 - Android 5.0 Lollipop)
 # See https://apilevels.com/ for Android API versions.
 # Note: If you building for 64-bit, you should target 21 and higher.
-API ?= 21
+API ?= 26
 
 # Android CPU specific variables to build:
 # (Default: ARMv7-A 32-bit)
@@ -26,9 +26,9 @@ API ?= 21
 # - HOST:   x86_64-linux-android
 # - TARGET: x86_64-linux-android
 # - ABI:    x86_64
-HOST   ?= armv7a-linux-androideabi
-TARGET ?= arm-linux-androideabi
-ABI    ?= armeabi-v7a
+HOST   ?= aarch64-linux-android
+TARGET ?= aarch64-linux-android
+ABI    ?= arm64-v8a
 
 # Define directories
 PREFIX            := $(HOST)$(API)
@@ -72,11 +72,11 @@ endif
 ifeq ($(ABI), armeabi-v7a)
 	CROSSFLAGS := -D__ARM_ARCH_7A__ -D__arm__ -march=armv7-a -mtune=cortex-a7 -mfpu=neon -mfloat-abi=softfp
 else ifeq ($(ABI), arm64-v8a)
-	CROSSFLAGS := -D__ARM_ARCH_8A__ -D__aarch64__ -march=armv8-a -mtune=cortex-a53
+	CROSSFLAGS := -D__ARM_ARCH_8A__ -D__aarch64__ -march=armv8-a -mtune=cortex-a73
 endif
 
 # Compiler/linker flags
-CFLAGS      := -O0 $(CROSSFLAGS) --sysroot=$(TOOLCHAIN)/sysroot -I$(TOOLCHAIN)/sysroot/usr/include -I$(INCDIR)
+CFLAGS      := -O2 $(CROSSFLAGS) --sysroot=$(TOOLCHAIN)/sysroot -I$(TOOLCHAIN)/sysroot/usr/include -I$(INCDIR)
 LDFLAGS     := -L$(LIBDIR) -lm -lz
 CLANG_FLAGS := -target $(TARGET) --gcc-toolchain $(TOOLCHAIN)
 
@@ -161,10 +161,11 @@ openal/cmakebuild/Makefile: openal/CMakeLists.txt
 openssl: init $(LIBDIR)/libssl.a
 
 $(LIBDIR)/libssl.a: openssl/Makefile
-	cd openssl; make -j$(NPROC); make install_sw
+	cd openssl; PATH="$(TOOLCHAIN)/bin:$$PATH" make -j$(NPROC); PATH="$(TOOLCHAIN)/bin:$$PATH" make install_sw
 
+# OpenSSL's Configure looks up the NDK clang on PATH
 openssl/Makefile: openssl/Configure
-	cd openssl; CFLAGS="-Wno-macro-redefined" ./Configure $(OPENSSL_TARGET) \
+	cd openssl; PATH="$(TOOLCHAIN)/bin:$$PATH" ANDROID_NDK_ROOT="$(NDK)" CFLAGS="-Wno-macro-redefined" ./Configure $(OPENSSL_TARGET) \
 	no-shared -D__ANDROID_API__=$(API) \
 	--prefix="$(BUILD_PREFIX)" --openssldir="$(BUILD_PREFIX)"
 

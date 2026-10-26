@@ -29,8 +29,6 @@ import java.util.Locale;
 import java.io.File;
 
 import org.libsdl.app.SDLActivity;
-import com.hatkid.mkxpz.gamepad.Gamepad;
-import com.hatkid.mkxpz.gamepad.GamepadConfig;
 
 public class MainActivity extends SDLActivity
 {
@@ -38,7 +36,7 @@ public class MainActivity extends SDLActivity
     // Put your Java-side stuff here.
 
     private static final String TAG = "mkxp-z[Activity]";
-    private static final String GAME_PATH_DEFAULT = Environment.getExternalStorageDirectory() + "/mkxp-z";
+    private static final String GAME_PATH_DEFAULT = Environment.getExternalStorageDirectory() + "/InfiniteFusion";
     private static String GAME_PATH = GAME_PATH_DEFAULT;
     private static String OBB_MAIN_FILENAME;
     private static boolean DEBUG = false;
@@ -51,9 +49,14 @@ public class MainActivity extends SDLActivity
 
     protected static TextView tvFps;
 
-    // In-screen gamepad
-    private final Gamepad mGamepad = new Gamepad();
-    private boolean mGamepadInvisible = false;
+    // Physical controller -> keyboard mapping (no on-screen joypad)
+    private final ControllerMapper mController = new ControllerMapper(new ControllerMapper.KeySink() {
+        @Override
+        public void keyDown(int keycode) { SDLActivity.onNativeKeyDown(keycode); }
+
+        @Override
+        public void keyUp(int keycode) { SDLActivity.onNativeKeyUp(keycode); }
+    });
 
     private void runSDLThread()
     {
@@ -146,16 +149,7 @@ public class MainActivity extends SDLActivity
             }
         }
 
-        // Setup in-screen gamepad
-        mGamepadInvisible = (isAndroidTV() || isChromebook());
-        GamepadConfig gpadConfig = new GamepadConfig();
-        mGamepad.init(gpadConfig, mGamepadInvisible);
-        mGamepad.setOnKeyDownListener(SDLActivity::onNativeKeyDown);
-        mGamepad.setOnKeyUpListener(SDLActivity::onNativeKeyUp);
-
-        if (mLayout != null) {
-            mGamepad.attachTo(this, mLayout);
-        }
+        mController.loadConfig(GAME_PATH_DEFAULT);
 
         // Setup FPS textview
         tvFps = new TextView(this);
@@ -208,45 +202,29 @@ public class MainActivity extends SDLActivity
     @Override
     public boolean dispatchKeyEvent(KeyEvent evt)
     {
-        if (
-            evt.getKeyCode() != KeyEvent.KEYCODE_BACK &&
-            evt.getKeyCode() != KeyEvent.KEYCODE_VOLUME_UP &&
-            evt.getKeyCode() != KeyEvent.KEYCODE_VOLUME_DOWN &&
-            evt.getKeyCode() != KeyEvent.KEYCODE_VOLUME_MUTE && 
-            evt.getKeyCode() != KeyEvent.KEYCODE_HEADSETHOOK
-        ) {
-            // Hide gamepad view on key events when visible
-            if (!mGamepadInvisible) {
-                mGamepad.hideView();
-                mGamepadInvisible = true;
-            }
-        }
-
-        if (mGamepad.processGamepadEvent(evt))
+        if (mController.onKeyEvent(evt))
             return true;
 
         return super.dispatchKeyEvent(evt);
     }
 
     @Override
-    public boolean dispatchTouchEvent(MotionEvent evt)
+    public boolean dispatchGenericMotionEvent(MotionEvent evt)
     {
-        // Show gamepad view on touch when hidden
-        if (mGamepadInvisible) {
-            mGamepad.showView();
-            mGamepadInvisible = false;
-        }
+        if (mController.onMotionEvent(evt))
+            return true;
 
-        return super.dispatchTouchEvent(evt);
+        return super.dispatchGenericMotionEvent(evt);
     }
 
     @Override
-    public boolean onGenericMotionEvent(MotionEvent evt)
+    public void onWindowFocusChanged(boolean hasFocus)
     {
-        if (mGamepad.processDPadEvent(evt))
-            return true;
+        super.onWindowFocusChanged(hasFocus);
 
-        return super.onGenericMotionEvent(evt);
+        // Avoid stuck keys (e.g. endless running) after a system overlay
+        if (!hasFocus)
+            mController.releaseAll();
     }
 
     /**
